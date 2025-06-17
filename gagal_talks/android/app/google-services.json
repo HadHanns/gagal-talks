@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "961936458921",
+    "project_id": "gagaltalks",
+    "storage_bucket": "gagaltalks.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:961936458921:android:204f0699cb3009d03295b8",
+        "android_client_info": {
+          "package_name": "com.example.gagal_talks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnpdmZBnNKR5jeOkHTGge7a2rH6kYl4gU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
