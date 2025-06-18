@@ -20,6 +20,7 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
   String _username = '';
   bool _isLoading = false;
   bool _isLiked = false;
+  bool _isLikeLoading = false;
 
   @override
   void initState() {
@@ -479,10 +480,15 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                           ),
                           const SizedBox(width: 12),
                           GestureDetector(
-                            onTap: () async {
-                              if (_isLiked) {
-                                // Unlike: remove like locally and in Firestore
-                                try {
+                            onTap: _isLikeLoading ? null : () async {
+                              if (_isLikeLoading) return;
+                              
+                              setState(() {
+                                _isLikeLoading = true;
+                              });
+                              
+                              try {
+                                if (_isLiked) {
                                   await context.read<StoryProvider>().toggleLike(currentStory.id, false);
                                   await LikedStoriesManager.instance.removeLikedStory(currentStory.id);
                                   if (mounted) {
@@ -490,16 +496,7 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                                       _isLiked = false;
                                     });
                                   }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Failed to unlike story')),
-                                    );
-                                  }
-                                }
-                              } else {
-                                // Like: add like locally and in Firestore
-                                try {
+                                } else {
                                   await context.read<StoryProvider>().toggleLike(currentStory.id, true);
                                   await LikedStoriesManager.instance.addLikedStory(currentStory.id);
                                   if (mounted) {
@@ -507,12 +504,18 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                                       _isLiked = true;
                                     });
                                   }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Failed to like story')),
-                                    );
-                                  }
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to ${_isLiked ? 'unlike' : 'like'} story')),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isLikeLoading = false;
+                                  });
                                 }
                               }
                             },
@@ -525,11 +528,23 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                                    color: _isLiked ? Colors.white : const Color(0xFF6B7280),
-                                    size: 20,
-                                  ),
+                                  if (_isLikeLoading)
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          _isLiked ? Colors.white : const Color(0xFF6366F1),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Icon(
+                                      _isLiked ? Icons.favorite : Icons.favorite_border,
+                                      color: _isLiked ? Colors.white : const Color(0xFF6B7280),
+                                      size: 20,
+                                    ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${currentStory.likes}',
