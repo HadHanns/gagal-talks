@@ -57,6 +57,7 @@ class Story {
   final DateTime date;
   int likes;
   final List<Reply> replies;
+  final int replyCount;
 
   Story({
     required this.id,
@@ -69,6 +70,7 @@ class Story {
     required this.date,
     this.likes = 0,
     this.replies = const [],
+    this.replyCount = 0,
   });
 
   factory Story.fromMap(Map<String, dynamic> map, String id) {
@@ -95,6 +97,7 @@ class Story {
             return null;
           }
         }).whereType<Reply>().toList() ?? [],
+        replyCount: map['replyCount'] ?? 0,
       );
     } catch (e) {
       print('Error parsing story with id $id: $e');
@@ -113,6 +116,7 @@ class Story {
       'username': username,
       'date': date,
       'likes': likes,
+      'replyCount': replyCount,
     };
   }
 } 

@@ -5,8 +5,25 @@ import '../models/story.dart';
 import 'story_detail_page.dart';
 import 'add_story_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _fixRan = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_fixRan) {
+      _fixRan = true;
+      // Run the fix once per app launch
+      Provider.of<StoryProvider>(context, listen: false).fixAllStoryReplyCounts();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -259,7 +276,7 @@ class HomePage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${story.replies.length}',
+                                  '${story.replyCount}',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: const Color(0xFF9CA3AF),
                                   ),
@@ -284,27 +301,16 @@ class HomePage extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6366F1).withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddStoryPage()),
-            );
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Share Story'),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddStoryPage()),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Share Story'),
+        heroTag: 'add-story',
       ),
     );
   }

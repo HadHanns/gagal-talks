@@ -53,6 +53,7 @@ class StoryProvider extends ChangeNotifier {
                       : DateTime.now(),
                   likes: storyData['likes'] ?? 0,
                   replies: replies,
+                  replyCount: storyData['replyCount'] ?? replies.length,
                 );
                 stories.add(story);
               }
@@ -117,6 +118,7 @@ class StoryProvider extends ChangeNotifier {
                   : DateTime.now(),
               likes: storyData['likes'] ?? 0,
               replies: replies,
+              replyCount: storyData['replyCount'] ?? replies.length,
             );
           })
           .handleError((error) {
@@ -152,6 +154,10 @@ class StoryProvider extends ChangeNotifier {
       await _firestore.collection(_repliesCollection).add(replyData);
       print('Reply added successfully for story: $storyId');
       
+      // Increment replyCount in the story document
+      await _firestore.collection(_collection).doc(storyId).update({
+        'replyCount': FieldValue.increment(1),
+      });
       // The stream will automatically update, so no need to call notifyListeners()
     } catch (e) {
       print('Error adding reply: $e');
@@ -170,6 +176,36 @@ class StoryProvider extends ChangeNotifier {
     } catch (e) {
       print('Error toggling like: $e');
       rethrow;
+    }
+  }
+
+  Future<void> deleteReply(String storyId, String replyId) async {
+    try {
+      // Delete the reply document
+      await _firestore.collection(_repliesCollection).doc(replyId).delete();
+      // Decrement replyCount in the story document
+      await _firestore.collection(_collection).doc(storyId).update({
+        'replyCount': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      print('Error deleting reply: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> fixAllStoryReplyCounts() async {
+    final stories = await _firestore.collection(_collection).get();
+    for (final storyDoc in stories.docs) {
+      final storyId = storyDoc.id;
+      final repliesSnapshot = await _firestore
+          .collection(_repliesCollection)
+          .where('storyId', isEqualTo: storyId)
+          .get();
+      final replyCount = repliesSnapshot.docs.length;
+      await _firestore.collection(_collection).doc(storyId).update({
+        'replyCount': replyCount,
+      });
+      print('Updated $storyId with replyCount $replyCount');
     }
   }
 } 
