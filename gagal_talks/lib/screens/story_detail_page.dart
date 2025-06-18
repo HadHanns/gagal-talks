@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/story.dart';
 import '../providers/story_provider.dart';
 import '../managers/liked_stories_manager.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StoryDetailPage extends StatefulWidget {
   final Story story;
@@ -175,7 +176,6 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                 );
               }
 
-              // Get the current story with updated replies
               final currentStory = snapshot.data!;
 
               return Padding(
@@ -303,7 +303,7 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                                 ),
                               ),
                             ),
-                            if (currentStory.replies.isNotEmpty) ...[
+                            if (true) ...[
                               const SizedBox(height: 24),
                               Row(
                                 children: [
@@ -320,83 +320,121 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
-                                    'Replies (${currentStory.replies.length})',
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1F2937),
-                                    ),
+                                  StreamBuilder<QuerySnapshot>(
+                                    stream: FirebaseFirestore.instance
+                                        .collection('replies')
+                                        .where('storyId', isEqualTo: currentStory.id)
+                                        .snapshots(),
+                                    builder: (context, replySnapshot) {
+                                      if (replySnapshot.hasError) {
+                                        return Text('Replies (error)');
+                                      }
+                                      if (!replySnapshot.hasData) {
+                                        return Text('Replies (...)');
+                                      }
+                                      final replies = replySnapshot.data!.docs
+                                          .map((doc) => Reply.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+                                          .toList();
+                                      return Text(
+                                        'Replies (${replies.length})',
+                                        style: theme.textTheme.headlineSmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1F2937),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: currentStory.replies.length,
-                                itemBuilder: (context, index) {
-                                  final reply = currentStory.replies[index];
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF6366F1).withOpacity(0.04),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 2),
+                              StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('replies')
+                                    .where('storyId', isEqualTo: currentStory.id)
+                                    .snapshots(),
+                                builder: (context, replySnapshot) {
+                                  if (replySnapshot.hasError) {
+                                    return Text('Error loading replies');
+                                  }
+                                  if (!replySnapshot.hasData) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  final replies = replySnapshot.data!.docs
+                                      .map((doc) => Reply.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+                                      .toList();
+                                  replies.sort((a, b) => a.date.compareTo(b.date));
+                                  if (replies.isEmpty) {
+                                    return const Text('No replies yet.');
+                                  }
+                                  return ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: replies.length,
+                                    itemBuilder: (context, index) {
+                                      final reply = replies[index];
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF6366F1).withOpacity(0.04),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                    child: Card(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
+                                        child: Card(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Container(
-                                                  padding: const EdgeInsets.all(6),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFFF1F5F9),
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                  child: Icon(
-                                                    !reply.isAnonymous ? Icons.person : Icons.visibility_off_outlined,
-                                                    size: 16,
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: const EdgeInsets.all(6),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFF1F5F9),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Icon(
+                                                        !reply.isAnonymous ? Icons.person : Icons.visibility_off_outlined,
+                                                        size: 16,
+                                                        color: const Color(0xFF6B7280),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      !reply.isAnonymous ? (reply.username ?? 'User') : 'Anonymous',
+                                                      style: theme.textTheme.titleSmall?.copyWith(
+                                                        fontWeight: FontWeight.w600,
+                                                        color: const Color(0xFF374151),
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                    Text(
+                                                      _formatDate(reply.date),
+                                                      style: theme.textTheme.bodySmall?.copyWith(
+                                                        color: const Color(0xFF9CA3AF),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  reply.content,
+                                                  style: theme.textTheme.bodyMedium?.copyWith(
                                                     color: const Color(0xFF6B7280),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  !reply.isAnonymous ? (reply.username ?? 'User') : 'Anonymous',
-                                                  style: theme.textTheme.titleSmall?.copyWith(
-                                                    fontWeight: FontWeight.w600,
-                                                    color: const Color(0xFF374151),
-                                                  ),
-                                                ),
-                                                const Spacer(),
-                                                Text(
-                                                  _formatDate(reply.date),
-                                                  style: theme.textTheme.bodySmall?.copyWith(
-                                                    color: const Color(0xFF9CA3AF),
+                                                    height: 1.5,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              reply.content,
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: const Color(0xFF6B7280),
-                                                height: 1.5,
-                                              ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    },
                                   );
                                 },
                               ),
@@ -442,18 +480,39 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                           const SizedBox(width: 12),
                           GestureDetector(
                             onTap: () async {
-                              try {
-                                await context.read<StoryProvider>().toggleLike(currentStory.id, !_isLiked);
-                                if (mounted) {
-                                  setState(() {
-                                    _isLiked = !_isLiked;
-                                  });
+                              if (_isLiked) {
+                                // Unlike: remove like locally and in Firestore
+                                try {
+                                  await context.read<StoryProvider>().toggleLike(currentStory.id, false);
+                                  await LikedStoriesManager.instance.removeLikedStory(currentStory.id);
+                                  if (mounted) {
+                                    setState(() {
+                                      _isLiked = false;
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Failed to unlike story')),
+                                    );
+                                  }
                                 }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Failed to toggle like')),
-                                  );
+                              } else {
+                                // Like: add like locally and in Firestore
+                                try {
+                                  await context.read<StoryProvider>().toggleLike(currentStory.id, true);
+                                  await LikedStoriesManager.instance.addLikedStory(currentStory.id);
+                                  if (mounted) {
+                                    setState(() {
+                                      _isLiked = true;
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Failed to like story')),
+                                    );
+                                  }
                                 }
                               }
                             },
